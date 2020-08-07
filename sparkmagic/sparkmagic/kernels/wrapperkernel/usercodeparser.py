@@ -11,7 +11,7 @@ class UserCodeParser(object):
     #    some_input
     _magics_with_no_cell_body = [i.__name__ for i in [KernelMagics.info, KernelMagics.logs, KernelMagics.cleanup,
                                                       KernelMagics.delete, KernelMagics.help, KernelMagics.spark,
-                                                      KernelMagics.send_to_spark]]
+                                                      KernelMagics.send_to_spark, KernelMagics.displaymap]]
 
     def get_code_to_run(self, code):
         try:
@@ -25,6 +25,8 @@ class UserCodeParser(object):
             return u"{}\n ".format(code)
         elif any(code.startswith("%" + s) for s in self._magics_with_no_cell_body):
             return u"%{}\n ".format(code)
+        elif code.startswith("%sql"):
+            return u"%{}".format(code)
         elif code.startswith("%%") or code.startswith("%"):
             # If they use other line magics:
             #       %autosave

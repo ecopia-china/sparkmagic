@@ -268,6 +268,18 @@ class KernelMagics(SparkMagicBase):
 
     @magic_arguments()
     @cell_magic
+    @argument("-d", "--dataframe", type=str, help="GeoSpatial DataFrame of Spark.")
+    @wrap_unexpected_exceptions
+    @handle_expected_exceptions
+    def displaymap(self, line, cell="", local_ns=None):
+        self._assure_cell_body_is_empty(KernelMagics.displaymap.__name__, cell)
+        args = parse_argstring_or_throw(self.displaymap, line)
+        dataframe = args.dataframe
+        session_id = self.spark_controller.get_session_id_for_client(self.session_name)
+        self.ipython_display.html(f"<iframe src='http://10.233.26.232:8998/ui/session/{session_id}'/>")
+
+    @magic_arguments()
+    @cell_magic
     @needs_local_scope
     @argument("-o", "--output", type=str, default=None, help="If present, query will be stored in variable of this "
                                                              "name.")
