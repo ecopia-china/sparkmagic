@@ -21,7 +21,7 @@ from sparkmagic.livyclientlib.command import Command
 from sparkmagic.livyclientlib.endpoint import Endpoint
 from sparkmagic.magics.sparkmagicsbase import SparkMagicBase
 from sparkmagic.livyclientlib.exceptions import handle_expected_exceptions, wrap_unexpected_exceptions, \
-    BadUserDataException
+    BadUserDataException, SparkStatementException
 
 
 def _event(f):
