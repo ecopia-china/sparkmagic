@@ -430,6 +430,19 @@ class KernelMagics(SparkMagicBase):
         else:
             session.ipython_display.send_error(out)
 
+    @magic_arguments()
+    @cell_magic
+    @argument("-l", "--layername", type=list, help="Mapdata layer.")
+    @wrap_unexpected_exceptions
+    @handle_expected_exceptions
+    def displaymap(self, line, cell="", local_ns=None):
+        self._assure_cell_body_is_empty(KernelMagics.displaymap.__name__, cell)
+        args = parse_argstring_or_throw(self.displaymap, line)
+        layername = args.layername
+        print(type(layername))
+        session_id = self.spark_controller.get_session_id_for_client(self.session_name)
+        self.ipython_display.html(f"{session_id}, {layername}'")
+
     def refresh_configuration(self):
         credentials = getattr(conf, 'base64_kernel_' + self.language + '_credentials')()
         (username, password, auth, url) = (credentials['username'], credentials['password'], credentials['auth'], credentials['url'])
