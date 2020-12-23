@@ -21,8 +21,8 @@ import io
 import os
 import re
 
-from distutils.core import setup
-
+# from distutils.core import setup
+from setuptools import setup
 
 def read(path, encoding='utf-8'):
     path = os.path.join(os.path.dirname(__file__), path)

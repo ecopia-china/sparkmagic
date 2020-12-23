@@ -1,5 +1,5 @@
 from mock import MagicMock, patch
-from nose.tools import with_setup, raises, assert_equals, assert_is
+from nose.tools import assert_equals
 from tornado.concurrent import Future
 from tornado.web import MissingArgumentError
 from tornado.testing import gen_test
@@ -8,7 +8,6 @@ import json
 
 from sparkmagic.serverextension.handlers import ReconnectHandler
 from sparkmagic.kernels.kernelmagics import KernelMagics
-import sparkmagic.utils.configuration as conf
 from sparkmagic.utils import constants
 
 
@@ -28,6 +27,7 @@ class TestSparkMagicHandler(AsyncTestCase):
     kernel_id = '1'
     kernel_name = 'pysparkkernel'
     session_id = '1'
+    session_name = 'some_path.ipynb'
     username = 'username'
     password = 'password'
     endpoint = 'http://endpoint.com'
@@ -37,8 +37,8 @@ class TestSparkMagicHandler(AsyncTestCase):
     bad_msg = dict(content=dict(status='error', ename='SyntaxError', evalue='oh no!'))
     request = None
 
-    def create_session_dict(self, path, kernel_id):
-        return dict(notebook=dict(path=path), kernel=dict(id=kernel_id, name=self.kernel_name), id=self.session_id)
+    def create_session_dict(self, path, kernel_id, name):
+        return dict(notebook=dict(path=path), kernel=dict(id=kernel_id, name=self.kernel_name), id=self.session_id, name=name)
 
     def get_argument(self, key):
         return dict(username=self.username, password=self.password, endpoint=self.endpoint, path=self.path)[key]
@@ -54,10 +54,10 @@ class TestSparkMagicHandler(AsyncTestCase):
         self.kernel_manager.get_kernel = MagicMock(return_value=self.individual_kernel_manager)
 
         # Mock session manager
-        self.session_list = [self.create_session_dict(self.path, self.kernel_id)]
+        self.session_list = [self.create_session_dict(self.path, self.kernel_id, self.session_name)]
         self.session_manager = MagicMock()
         self.session_manager.list_sessions = MagicMock(return_value=self.session_list)
-        self.session_manager.create_session = MagicMock(return_value=self.create_session_dict(self.path, self.kernel_id))
+        self.session_manager.create_session = MagicMock(return_value=self.create_session_dict(self.path, self.kernel_id, self.session_name))
 
         # Mock spark events
         self.spark_events = MagicMock()
@@ -136,7 +136,7 @@ class TestSparkMagicHandler(AsyncTestCase):
     @patch('sparkmagic.serverextension.handlers.ReconnectHandler._get_kernel_manager')
     @gen_test
     def test_post_existing_kernel_with_auth_missing_basic_auth(self, _get_kernel_manager):
-        self.request.body = json.dumps({ "path": self.path, "username": self.username, "password": self.password, "endpoint": self.endpoint })
+        self.request.body = json.dumps({ "path": self.path, "username": self.username, "password": self.password, "endpoint": self.endpoint})
         kernel_manager_future = Future()
         kernel_manager_future.set_result(self.individual_kernel_manager)
         _get_kernel_manager.return_value = kernel_manager_future
@@ -196,7 +196,7 @@ class TestSparkMagicHandler(AsyncTestCase):
         assert_equals(self.individual_kernel_manager, km)
         self.individual_kernel_manager.restart_kernel.assert_not_called()
         self.kernel_manager.get_kernel.assert_not_called()
-        _get_kernel_manager_new_session.assert_called_once_with(different_path, self.kernel_name)
+        _get_kernel_manager_new_session.assert_called_once_with(different_path, self.kernel_name, different_path)
 
     @patch('sparkmagic.serverextension.handlers.ReconnectHandler._get_kernel_manager_new_session')
     @gen_test
@@ -220,5 +220,5 @@ class TestSparkMagicHandler(AsyncTestCase):
         assert_equals(self.individual_kernel_manager, km)
         self.individual_kernel_manager.restart_kernel.assert_not_called()
         self.kernel_manager.get_kernel.assert_not_called()
-        _get_kernel_manager_new_session.assert_called_once_with(self.path, different_kernel)
+        _get_kernel_manager_new_session.assert_called_once_with(self.path, different_kernel, self.session_name)
         self.session_manager.delete_session.assert_called_once_with(self.session_id)

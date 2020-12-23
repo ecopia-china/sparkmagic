@@ -208,6 +208,26 @@ class KernelMagics(SparkMagicBase):
     @wrap_unexpected_exceptions
     @handle_expected_exceptions
     @_event
+    def _spark_endpoint_info(self, line, cell=u"", local_ns=None):
+        parse_argstring_or_throw(self._spark_endpoint_info, line)
+        self._assure_cell_body_is_empty(KernelMagics._spark_endpoint_info.__name__, cell)
+        if self.session_started:
+            current_session_id = self.spark_controller.get_session_id_for_client(self.session_name)
+        else:
+            current_session_id = None
+
+        spark_endpoint_info = {}
+        if current_session_id is None:
+            spark_endpoint_info["endpoint"] = "None"
+        else:
+            spark_endpoint_info["endpoint"] = self.endpoint.url
+        self.ipython_display.write(json.dumps(spark_endpoint_info))
+
+    @magic_arguments()
+    @cell_magic
+    @wrap_unexpected_exceptions
+    @handle_expected_exceptions
+    @_event
     def logs(self, line, cell="", local_ns=None):
         parse_argstring_or_throw(self.logs, line)
         self._assure_cell_body_is_empty(KernelMagics.logs.__name__, cell)

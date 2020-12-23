@@ -159,6 +159,10 @@ class LivySession(ObjectWithGuid):
             if success:
                 self.ipython_display.writeln(u"SparkSession available as 'spark'.")
                 self.sql_context_variable_name = "spark"
+                command = Command("from geospark.register import upload_jars\nfrom geospark.register import GeoSparkRegistrator\nupload_jars()\nGeoSparkRegistrator.registerAll(spark)")
+                (success, out, mimetype) = command.execute(self)
+                if not success:
+                    raise Exception("Init geospark failed")
             else:
                 command = Command("sqlContext")
                 (success, out, mimetype) = command.execute(self)
