@@ -1,3 +1,4 @@
+from copy import Error
 import json
 import os
 from notebook.utils import url_path_join
@@ -41,6 +42,7 @@ class ReconnectHandler(IPythonHandler):
             password = self._get_argument_or_raise(data, 'password')
             endpoint = self._get_argument_or_raise(data, 'endpoint')
             auth = self._get_argument_if_exists(data, 'auth')
+            session_config = self._get_argument_if_exists(data, 'session_config')
             if auth is None:
                 if username == '' and password == '':
                     auth = constants.NO_AUTH
@@ -60,6 +62,22 @@ class ReconnectHandler(IPythonHandler):
 
         # Execute code
         client = kernel_manager.client()
+
+        # change session config
+        if session_config is not None:
+            session_config_code = '%%{} \n{}'.format(KernelMagics.configure.__name__, session_config)
+            session_config_response_id = client.execute(session_config_code, silent=False, store_history=False)
+            session_config_msg = client.get_shell_msg(session_config_response_id)
+            session_config_successful_message = self._msg_successful(session_config_msg)
+            session_config_error = self._msg_error(session_config_msg)
+            if not session_config_successful_message:
+                self.logger.error(u"Code to reconnect errored out: {}".format(session_config_error))
+                status_code = 500
+                self.set_status(status_code)
+                self.finish(json.dumps(dict(success=session_config_successful_message, error=session_config_error), sort_keys=True))
+                spark_events.emit_cluster_change_event(endpoint, status_code, session_config_successful_message, session_config_error)
+
+        # change endpoint
         code = '%{} -s {} -u {} -p {} -t {}'.format(KernelMagics._do_not_call_change_endpoint.__name__, endpoint, username, password, auth)
         response_id = client.execute(code, silent=False, store_history=False)
         msg = client.get_shell_msg(response_id)
