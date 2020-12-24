@@ -317,11 +317,12 @@ class LivySession(ObjectWithGuid):
             self._heartbeat_thread = None
 
     def get_row_html(self, current_session_id):
-        return u"""<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td></tr>""".format(
-            self.id, self.get_app_id(), self.kind, self.status,
-            "<Button onClick='console.log(\"wow sparkui\")'>View</Button>", "<Button onClick='console.log(\"wow logurl\")'>View</Button>",
-            u"" if current_session_id is None or current_session_id != self.id else u"\u2714"
-        )
+        return u"""<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td>
+            <td><Button onClick="console.log('call showSparkUI');window.parent.showSparkUI('{4}')">View</Button></td>
+            <td><Button onClick="console.log('call showSparkLog');window.parent.showSparkLog('{5}')">View</Button></td>
+            <td>{6}</td></tr>""".format(self.id, self.get_app_id(), self.kind, self.status,
+            self.get_spark_ui_url(), self.get_driver_log_url(),
+            u"" if current_session_id is None or current_session_id != self.id else u"\u2714")
 
     @staticmethod
     def get_html_link(text, url):

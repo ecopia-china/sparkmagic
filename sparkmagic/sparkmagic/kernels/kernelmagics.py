@@ -10,6 +10,8 @@ from IPython.core.magic import magics_class
 from IPython.core.magic import needs_local_scope, cell_magic, line_magic
 from IPython.core.magic_arguments import argument, magic_arguments
 from hdijupyterutils.utils import generate_uuid
+from IPython.core.display import display
+from IPython.display import IFrame
 
 import sparkmagic.utils.configuration as conf
 from sparkmagic.utils.configuration import get_livy_kind
@@ -453,12 +455,16 @@ class KernelMagics(SparkMagicBase):
     @magic_arguments()
     @cell_magic
     @argument("-l", "--layername", type=str, help="Mapdata layer or layer group.")
+    @argument("-w", "--width", type=str, default='100%', help="Frame width.")
+    @argument("-h", "--height", type=str, default='400', help="Frame height.")
     @wrap_unexpected_exceptions
     @handle_expected_exceptions
     def displaymap(self, line, cell="", local_ns=None):
         if self._do_not_call_start_session(u""):
             args = parse_argstring_or_throw(self.displaymap, line)
             code = f"{args.layername}._view()"
+            frame_width = args.width
+            frame_height = args.height
 
             (success, out, mimetype) = self.spark_controller.run_command(Command(code), None)
             if not success:
@@ -467,7 +473,8 @@ class KernelMagics(SparkMagicBase):
 
                 raise SparkStatementException(out)
             else:
-                self.ipython_display.display(out)
+                url = str(out).strip("'")
+                display(IFrame(src=url, width=frame_width, height=frame_height))
         else:
             return
 
