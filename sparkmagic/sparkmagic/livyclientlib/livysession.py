@@ -14,7 +14,6 @@ from .command import Command
 from .exceptions import LivyClientTimeoutException, \
     LivyUnexpectedStatusException, BadUserDataException, SqlContextNotFoundException
 
-
 class _HeartbeatThread(threading.Thread):
     def __init__(self, livy_session, refresh_seconds, retry_seconds, run_at_most=None):
         """
@@ -159,10 +158,12 @@ class LivySession(ObjectWithGuid):
             if success:
                 self.ipython_display.writeln(u"SparkSession available as 'spark'.")
                 self.sql_context_variable_name = "spark"
-                command = Command("from geospark.register import upload_jars\nfrom geospark.register import GeoSparkRegistrator\nupload_jars()\nGeoSparkRegistrator.registerAll(spark)")
-                (success, out, mimetype) = command.execute(self)
-                if not success:
-                    raise Exception("Init geospark failed")
+
+                if self.properties[constants.LIVY_KIND_PARAM] == constants.SESSION_KIND_PYSPARK:
+                    command = Command("from geospark.register import upload_jars\nfrom geospark.register import GeoSparkRegistrator\nupload_jars()\nGeoSparkRegistrator.registerAll(spark)")
+                    (success, out, mimetype) = command.execute(self)
+                    if not success:
+                        raise Exception("Init geospark failed")
             else:
                 command = Command("sqlContext")
                 (success, out, mimetype) = command.execute(self)
