@@ -10,8 +10,6 @@ from IPython.core.magic import magics_class
 from IPython.core.magic import needs_local_scope, cell_magic, line_magic
 from IPython.core.magic_arguments import argument, magic_arguments
 from hdijupyterutils.utils import generate_uuid
-from IPython.core.display import display
-from IPython.display import IFrame
 
 import sparkmagic.utils.configuration as conf
 from sparkmagic.utils.configuration import get_livy_kind
@@ -462,7 +460,7 @@ class KernelMagics(SparkMagicBase):
     def displaymap(self, line, cell="", local_ns=None):
         if self._do_not_call_start_session(u""):
             args = parse_argstring_or_throw(self.displaymap, line)
-            code = f"{args.layername}._view()"
+            code = f"{args.layername}._info()"
             frame_width = args.width
             frame_height = args.height
 
@@ -473,8 +471,16 @@ class KernelMagics(SparkMagicBase):
 
                 raise SparkStatementException(out)
             else:
-                url = str(out).strip("'")
-                display(IFrame(src=url, width=frame_width, height=frame_height))
+                info = str(out).strip("'")
+                self.logger.error(f'layer info: {info}')
+                res = json.loads(str(out).strip("'"))
+                map_html = f"""
+<script>var globalLayerProperties;</script>
+<iframe src={res['url']} width={frame_width} height={frame_height} frameborder=0 id={res['viewname']} 
+onLoad='globalLayerProperties={json.dumps(res['properties'])}' />
+                """
+                self.ipython_display.html(map_html)
+                # display(IFrame(src=url, width=frame_width, height=frame_height, id="mapframe"))
         else:
             return
 
