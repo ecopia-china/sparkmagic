@@ -69,6 +69,14 @@ class ReconnectHandler(IPythonHandler):
         error = self._msg_error(msg)
         if successful_message:
             status_code = 200
+            current_spark_connection_infos = conf.current_spark_connection_infos()
+            current_spark_connection_infos[path] = {
+                                                    "endpoint": endpoint,
+                                                    "auth": auth,
+                                                    "username": username,
+                                                    "password": password}
+
+            conf.override(conf.current_spark_connection_infos.__name__, current_spark_connection_infos)
         else:
             self.logger.error(u"Code to reconnect errored out: {}".format(error))
             status_code = 500
@@ -158,6 +166,51 @@ class ReconnectHandler(IPythonHandler):
         return spark_events
 
 
+class SparkEndpointInfoHandler(IPythonHandler):
+    logger = None
+
+    @web.authenticated
+    @gen.coroutine
+    def post(self):
+        self.logger = SparkLog(u"SparkEndpointInfoHandler")
+        current_spark_connection_infos = conf.current_spark_connection_infos()
+
+        self.logger.info("get SparkEndpointInfoHandler request")
+
+        path = ""
+        try:
+            data = json_decode(self.request.body)
+            path = self._get_argument_or_raise(data, 'path')
+            self.logger.info(path)
+
+        except MissingArgumentError as e:
+            self.logger.error(str(e))
+            self.set_status(400)
+            self.finish(str(e))
+            return
+        except Exception as e:
+            self.logger.error(str(e))
+            self.set_status(400)
+            self.finish(str(e))
+            return
+
+        current_spark_endpoint_url = "None"
+        if path in current_spark_connection_infos:
+            current_spark_endpoint_url = current_spark_connection_infos[path]["endpoint"]
+        
+        self.logger.info(current_spark_endpoint_url)
+        spark_endpoint_info = {"endpoint": current_spark_endpoint_url}
+
+        # Post execution info
+        self.set_status(200)
+        self.finish(json.dumps(spark_endpoint_info))
+
+    def _get_argument_or_raise(self, data, key):
+        try:
+            return data[key]
+        except KeyError:
+            raise MissingArgumentError(key)
+
 def load_jupyter_server_extension(nb_app):
     nb_app.log.info("sparkmagic extension enabled!")
     web_app = nb_app.web_app
@@ -166,6 +219,7 @@ def load_jupyter_server_extension(nb_app):
     host_pattern = '.*$'
 
     route_pattern_reconnect = url_path_join(base_url, '/reconnectsparkmagic')
-    handlers = [(route_pattern_reconnect, ReconnectHandler)]
+    route_pattern_spark_endpoint_info = url_path_join(base_url, '/spark_endpoint_info')
+    handlers = [(route_pattern_reconnect, ReconnectHandler), (route_pattern_spark_endpoint_info, SparkEndpointInfoHandler)]
 
     web_app.add_handlers(host_pattern, handlers)

@@ -65,6 +65,9 @@ def get_session_properties(language):
 def session_configs():
     return {}
 
+@_with_override
+def current_spark_connection_infos():
+    return {}
 
 @_with_override
 def kernel_python_credentials():

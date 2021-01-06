@@ -439,6 +439,14 @@ class KernelMagics(SparkMagicBase):
             raise BadUserDataException(error)
 
         self.endpoint = Endpoint(server, auth, username, password)
+        current_spark_connection_infos = conf.current_spark_connection_infos()
+        current_spark_connection_infos["endpoint"] = {
+                                                    "endpoint": server,
+                                                    "auth": auth,
+                                                    "username": username,
+                                                    "password": password}
+
+        conf.override(conf.current_spark_connection_infos.__name__, current_spark_connection_infos)
 
     @line_magic
     def matplot(self, line, cell="", local_ns=None):
@@ -486,7 +494,11 @@ onLoad='globalLayerProperties={json.dumps(res['properties'])}' />
 
     def refresh_configuration(self):
         credentials = getattr(conf, 'base64_kernel_' + self.language + '_credentials')()
+        current_spark_connection_infos = conf.current_spark_connection_infos()
+        if "endpoint" in current_spark_connection_infos:
+            credentials = current_spark_connection_infos["endpoint"]
         (username, password, auth, url) = (credentials['username'], credentials['password'], credentials['auth'], credentials['url'])
+
         self.endpoint = Endpoint(url, auth, username, password)
 
     def get_session_settings(self, line, force):
