@@ -23,15 +23,17 @@ class ReconnectHandler(IPythonHandler):
         self.logger = SparkLog(u"ReconnectHandler")
 
         spark_events = self._get_spark_events()
+        status_code = 200
 
         try:
             data = json_decode(self.request.body)
         except ValueError as e:
-            self.set_status(400)
+            status_code = 400
+            self.set_status(status_code)
             msg = "Invalid JSON in request body."
             self.logger.error(msg)
             self.finish(msg)
-            spark_events.emit_cluster_change_event(None, 400, False, msg)
+            spark_events.emit_cluster_change_event(None, status_code, False, msg)
             return
 
         endpoint = None
@@ -41,16 +43,18 @@ class ReconnectHandler(IPythonHandler):
             password = self._get_argument_or_raise(data, 'password')
             endpoint = self._get_argument_or_raise(data, 'endpoint')
             auth = self._get_argument_if_exists(data, 'auth')
-            if auth is None:
+            session_config = self._get_argument_if_exists(data, 'session_config')
+            if auth is None or auth == "":
                 if username == '' and password == '':
                     auth = constants.NO_AUTH
                 else:
                     auth = constants.AUTH_BASIC
         except MissingArgumentError as e:
-            self.set_status(400)
+            status_code = 400
+            self.set_status(status_code)
             self.finish(str(e))
             self.logger.error(str(e))
-            spark_events.emit_cluster_change_event(endpoint, 400, False, str(e))
+            spark_events.emit_cluster_change_event(endpoint, status_code, False, str(e))
             return
 
         kernel_name = self._get_kernel_name(data)
@@ -60,23 +64,51 @@ class ReconnectHandler(IPythonHandler):
 
         # Execute code
         client = kernel_manager.client()
-        code = '%{} -s {} -u {} -p {} -t {}'.format(KernelMagics._do_not_call_change_endpoint.__name__, endpoint, username, password, auth)
-        response_id = client.execute(code, silent=False, store_history=False)
-        msg = client.get_shell_msg(response_id)
 
-        # Get execution info
-        successful_message = self._msg_successful(msg)
-        error = self._msg_error(msg)
-        if successful_message:
-            status_code = 200
-        else:
-            self.logger.error(u"Code to reconnect errored out: {}".format(error))
+        # change endpoint
+        try:
+            change_endpoint_code = '%{} -s {} -u "{}" -p "{}" -t {}'.format(KernelMagics._do_not_call_change_endpoint.__name__, endpoint, username, password, auth)
+            response_id = client.execute(change_endpoint_code, silent=False, store_history=False)
+            msg = client.get_shell_msg(response_id)
+            successful_message = self._msg_successful(msg)
+            error = self._msg_error(msg)
+            if not successful_message:
+                self.logger.error(u"Code to reconnect errored out: {}".format(error))
+                status_code = 500
+                self.set_status(status_code)
+                self.finish(json.dumps(dict(success=successful_message, error=error), sort_keys=True))
+        except Exception as e:
             status_code = 500
+            self.set_status(status_code)
+            self.finish(str(e))
+            self.logger.error(str(e))
+
+        # change session config
+        if session_config is not None and session_config != "":
+            try:
+                session_config_code = '%%{} -f\n{}'.format(KernelMagics.configure.__name__, session_config)
+                response_id = client.execute(session_config_code, silent=False, store_history=False)
+                msg = client.get_shell_msg(response_id)
+                successful_message = self._msg_successful(msg)
+                error = self._msg_error(msg)
+                if not successful_message:
+                    self.logger.error(u"Code to reconnect errored out: {}".format(error))
+                    status_code = 500
+                    self.set_status(status_code)
+                    self.finish(json.dumps(dict(success=successful_message, error=error), sort_keys=True))
+                    spark_events.emit_cluster_change_event(endpoint, status_code, successful_message, error)
+            except Exception as e:
+                status_code = 400
+                self.set_status(status_code)
+                self.finish(str(e))
+                self.logger.error(str(e))
+                spark_events.emit_cluster_change_event(endpoint, status_code, False, str(e))
+                return
 
         # Post execution info
         self.set_status(status_code)
-        self.finish(json.dumps(dict(success=successful_message, error=error), sort_keys=True))
-        spark_events.emit_cluster_change_event(endpoint, status_code, successful_message, error)
+        self.finish(json.dumps(dict(success=True, error=None), sort_keys=True))
+        spark_events.emit_cluster_change_event(endpoint, status_code, True, None)
 
     def _get_kernel_name(self, data):
         kernel_name = self._get_argument_if_exists(data, 'kernelname')
