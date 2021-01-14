@@ -67,7 +67,15 @@ class ReconnectHandler(IPythonHandler):
 
         # change endpoint
         try:
-            change_endpoint_code = '%{} -s {} -u "{}" -p "{}" -t {}'.format(KernelMagics._do_not_call_change_endpoint.__name__, endpoint, username, password, auth)
+            change_endpoint_code = '%{}'.format(KernelMagics._do_not_call_change_endpoint.__name__)
+            if endpoint != "":
+                change_endpoint_code = change_endpoint_code + ' -s {}'.format(endpoint)
+            if username != "":
+                change_endpoint_code = change_endpoint_code + ' -u {}'.format(username)
+            if password != "":
+                change_endpoint_code = change_endpoint_code + ' -p {}'.format(password)
+            if auth != "":
+                change_endpoint_code = change_endpoint_code + ' -t {}'.format(auth)
             response_id = client.execute(change_endpoint_code, silent=False, store_history=False)
             msg = client.get_shell_msg(response_id)
             successful_message = self._msg_successful(msg)

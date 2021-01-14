@@ -84,6 +84,10 @@ class SparkController(object):
         if skip_if_exists and (name in self.session_manager.get_sessions_list()):
             self.logger.debug(u"Skipping {} because it already exists in list of sessions.".format(name))
             return
+        if endpoint == None:
+            self.session_manager.add_session(name, None)
+            return
+
         http_client = self._http_client(endpoint)
         session = self._livy_session(http_client, properties, self.ipython_display)
         self.session_manager.add_session(name, session)

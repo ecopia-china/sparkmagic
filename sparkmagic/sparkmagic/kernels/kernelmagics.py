@@ -10,6 +10,7 @@ from IPython.core.magic import magics_class
 from IPython.core.magic import needs_local_scope, cell_magic, line_magic
 from IPython.core.magic_arguments import argument, magic_arguments
 from hdijupyterutils.utils import generate_uuid
+from traitlets.traitlets import default
 
 import sparkmagic.utils.configuration as conf
 from sparkmagic.utils.configuration import get_livy_kind
@@ -277,6 +278,10 @@ class KernelMagics(SparkMagicBase):
     @wrap_unexpected_exceptions
     @handle_expected_exceptions
     def spark(self, line, cell="", local_ns=None):
+        if self.endpoint == None:
+            self.ipython_display.send_error("No spark cluster connected, please connect to a spark cluster.")
+            return
+
         if self._do_not_call_start_session(u""):
             args = parse_argstring_or_throw(self.spark, line)
 
@@ -301,6 +306,10 @@ class KernelMagics(SparkMagicBase):
     @wrap_unexpected_exceptions
     @handle_expected_exceptions
     def sql(self, line, cell="", local_ns=None):
+        if self.endpoint == None:
+            self.ipython_display.send_error("No spark cluster connected, please connect to a spark cluster.")
+            return
+
         if self._do_not_call_start_session(""):
             args = parse_argstring_or_throw(self.sql, line)
 
@@ -422,10 +431,10 @@ class KernelMagics(SparkMagicBase):
 
     @magic_arguments()
     @line_magic
-    @argument("-u", "--username", type=str, help="Username to use.")
-    @argument("-p", "--password", type=str, help="Password to use.")
-    @argument("-s", "--server", type=str, help="Url of server to use.")
-    @argument("-t", "--auth", type=str, help="Auth type for authentication")
+    @argument("-u", "--username", type=str, default="", help="Username to use.")
+    @argument("-p", "--password", type=str, default="", help="Password to use.")
+    @argument("-s", "--server", type=str, default="", help="Url of server to use.")
+    @argument("-t", "--auth", type=str, default="", help="Auth type for authentication")
     @_event
     def _do_not_call_change_endpoint(self, line, cell="", local_ns=None):
         args = parse_argstring_or_throw(self._do_not_call_change_endpoint, line)
@@ -438,7 +447,10 @@ class KernelMagics(SparkMagicBase):
             error = u"Cannot change the endpoint if a session has been started."
             raise BadUserDataException(error)
 
-        self.endpoint = Endpoint(server, auth, username, password)
+        if server == None or server == "":
+            self.endpoint = None
+        else:
+            self.endpoint = Endpoint(server, auth, username, password)
 
     @line_magic
     def matplot(self, line, cell="", local_ns=None):
@@ -487,7 +499,10 @@ onLoad='globalLayerProperties={json.dumps(res['properties'])}' />
     def refresh_configuration(self):
         credentials = getattr(conf, 'base64_kernel_' + self.language + '_credentials')()
         (username, password, auth, url) = (credentials['username'], credentials['password'], credentials['auth'], credentials['url'])
-        self.endpoint = Endpoint(url, auth, username, password)
+        if url == "" or url == None:
+            self.endpoint = None
+        else:
+            self.endpoint = Endpoint(url, auth, username, password)
 
     def get_session_settings(self, line, force):
         line = line.strip()

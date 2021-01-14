@@ -70,7 +70,8 @@ class SessionManager(object):
 
     def _remove_session(self, name):
         if name in self.get_sessions_list():
-            self._sessions[name].delete()
+            if self._sessions[name] != None:
+                self._sessions[name].delete()
             del self._sessions[name]
         else:
             raise SessionManagementException(u"Could not find '{}' session in list of saved sessions. Possible sessions are {}"
