@@ -165,7 +165,7 @@ class LivySession(ObjectWithGuid):
                     if not success:
                         raise Exception("Init geospark failed")
                 if self.properties[constants.LIVY_KIND_PARAM] == constants.SESSION_KIND_SPARKR:
-                    command = Command('SparkR:::callJStatic("org.datasyslab.geosparksql.utils.GeoSparkSQLRegistrator", "registerAll", sparkR.session())')
+                    command = Command('SparkR:::callJStatic("org.datasyslab.geosparksql.utils.GeoSparkSQLRegistrator", "registerAll", spark)')
                     (success, out, mimetype) = command.execute(self)
                     if not success:
                         raise Exception("Init geospark failed")
