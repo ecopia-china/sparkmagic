@@ -17,7 +17,7 @@ from sparkmagic.utils.configuration import get_livy_kind
 from sparkmagic.utils import constants
 from sparkmagic.utils.utils import parse_argstring_or_throw, get_coerce_value
 from sparkmagic.utils.sparkevents import SparkEvents
-from sparkmagic.utils.constants import LANGS_SUPPORTED
+from sparkmagic.utils.constants import LANGS_SUPPORTED, LANG_PYTHON, LANG_R
 from sparkmagic.livyclientlib.command import Command
 from sparkmagic.livyclientlib.endpoint import Endpoint
 from sparkmagic.magics.sparkmagicsbase import SparkMagicBase
@@ -472,7 +472,13 @@ class KernelMagics(SparkMagicBase):
     def displaymap(self, line, cell="", local_ns=None):
         if self._do_not_call_start_session(u""):
             args = parse_argstring_or_throw(self.displaymap, line)
-            code = f"{args.layername}._info()"
+            if self.language == LANG_PYTHON:
+                code = f"{args.layername}._info()"
+            elif self.language == LANG_R:
+                code = f"layerUpdateView({args.layername})"
+            else:
+                print("Unsupported language")
+                return
             frame_width = args.width
             frame_height = args.height
 
@@ -485,7 +491,10 @@ class KernelMagics(SparkMagicBase):
             else:
                 info = str(out).strip("'")
                 self.logger.error(f'layer info: {info}')
-                res = json.loads(str(out).strip("'"))
+                if self.language == LANG_PYTHON:
+                    res = json.loads(info)
+                elif self.language == LANG_R:
+                    res = json.loads(info[4:].strip('"').replace("'", '"'))
                 map_html = f"""
 <script>var globalLayerProperties;</script>
 <iframe src={res['url']} width={frame_width} height={frame_height} frameborder=0 id={res['viewname']} 
